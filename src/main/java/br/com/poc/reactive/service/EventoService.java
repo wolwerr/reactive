@@ -1,6 +1,7 @@
 package br.com.poc.reactive.service;
 
 import br.com.poc.reactive.dto.EventoDto;
+import br.com.poc.reactive.entities.TraducaoDeTextos;
 import br.com.poc.reactive.enums.TipoEvento;
 import br.com.poc.reactive.repositories.EventoRepository;
 import lombok.RequiredArgsConstructor;
@@ -14,44 +15,50 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class EventoService {
 
-    private final EventoRepository eventoRepository;
+    private final EventoRepository repositorio;
 
     public Flux<EventoDto> obterTodos() {
-        return eventoRepository.findAll()
+        return  repositorio.findAll()
                 .map(EventoDto::toDto);
     }
 
     public Mono<EventoDto> obterPorId(Long id) {
-        return  eventoRepository.findById(id)
+        return  repositorio.findById(id)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND)))
                 .map(EventoDto::toDto);
     }
 
     public Mono<EventoDto> cadastrar(EventoDto dto) {
-        return eventoRepository.save(dto.toEntity())
+        return repositorio.save(dto.toEntity())
                 .map(EventoDto::toDto);
     }
+
     public Mono<Void> excluir(Long id) {
-        return eventoRepository.findById(id)
-                .flatMap(eventoRepository::delete);
+        return repositorio.findById(id)
+                .flatMap(repositorio::delete);
     }
 
-    public Mono<EventoDto> alterarCadastro(Long id, EventoDto dto) {
-        return eventoRepository.findById(id)
+    public Mono<EventoDto> alterar(Long id, EventoDto dto) {
+        return repositorio.findById(id)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "Id do evento não encontrado.")))
                 .flatMap(eventoExistente -> {
                     eventoExistente.setTipo(dto.tipo());
                     eventoExistente.setNome(dto.nome());
                     eventoExistente.setData(dto.data());
                     eventoExistente.setDescricao(dto.descricao());
-                    return eventoRepository.save(eventoExistente);
+                    return repositorio.save(eventoExistente);
                 })
                 .map(EventoDto::toDto);
     }
 
     public Flux<EventoDto> obterPorTipo(String tipo) {
         TipoEvento tipoEvento = TipoEvento.valueOf(tipo.toUpperCase());
-        return eventoRepository.findByTipo(tipoEvento)
+        return repositorio.findByTipo(tipoEvento)
                 .map(EventoDto::toDto);
+    }
+
+    public Mono<String> obterTraducao(Long id, String idioma) {
+        return repositorio.findById(id)
+                .flatMap(e -> TraducaoDeTextos.obterTraducao(e.getDescricao(), idioma));
     }
 }
